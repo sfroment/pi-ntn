@@ -5,9 +5,11 @@ description: Run Notion CLI (ntn) commands via the `ntn` tool (a direct CLI wrap
 
 ## When to Use
 
-Use whenever the user asks about anything in Notion — retrieving or creating pages, editing page content, searching the workspace, querying databases/data sources, resolving database IDs, or making raw Notion API calls. Triggers: "search my Notion", "get this page", "create a page", "edit the page", "query the database", "find notes in Notion", "ntn api".
+Use whenever the user asks about anything in Notion — retrieving or creating pages, editing page content, searching the workspace, querying databases/data sources, resolving database IDs, managing file uploads, or making raw Notion API calls. Triggers: "search my Notion", "get this page", "create a page", "edit the page", "query the database", "find notes in Notion", "ntn api", "upload a file to Notion".
 
 **IMPORTANT**: The `ntn` tool calls the Notion CLI (`ntn`) directly. It is **not** an MCP server — do not use the `mcp` gateway. The `ntn` CLI must be installed and authenticated. If the tool returns "not authenticated", tell the user to run `ntn login` via bash.
+
+**Discovering commands**: the top-level subcommands are `pages`, `datasources`, `files`, `workers` (beta), `api`, `auth`, `whoami`, `login`, `logout`, `doctor`, `update`, and `notion-as-code` (alpha). Run `ntn --help` via bash for the authoritative list, and `ntn api ls` for every public API endpoint. The `api <path>` escape hatch covers any endpoint without a dedicated subcommand.
 
 ## Tool reference
 
@@ -58,22 +60,36 @@ This produces `ntn api /v1/search --data '{"query":"meeting notes","filter":{"pr
 - `datasources query <id>` — query pages in a data source.
 - `datasources resolve <db-id>` — resolve a Notion database ID to its data source IDs.
 
+### Files
+
+- `files create` — create a file upload from stdin or an external URL.
+- `files get <id>` — retrieve a file upload by id.
+- `files list` (alias `files ls`) — list file uploads.
+
+### Workers (Beta)
+
+- `workers` — manage Notion workers. Subcommands: `capabilities`, `create`, `deploy`, `new`, `exec`, `get`, `delete` (alias `rm`), `env`, `oauth`, `databases`. Use `ntn workers --help` (via bash) to see the full list — this surface is beta and evolves.
+
 ### Raw API
 
-- `api <path>` — raw Notion API call. Pass the request body via `data` and optionally override the HTTP method via `method`.
+- `api <path>` — raw Notion API call. Pass the request body via `data` and optionally override the HTTP method via `method`. This is the escape hatch for any endpoint not covered by a dedicated subcommand.
   - `api /v1/search` — search by title (`data: '{"query":"...","filter":{"property":"object","value":"page"}}'`).
   - `api /v1/pages` — create a page (POST; pass body via `data`).
   - `api /v1/pages/<id>` — retrieve or update a page (GET/PATCH).
   - `api /v1/databases/<id>` — retrieve or update a database.
   - `api /v1/blocks/<id>/children` — append block children.
-  - `api ls` — list all supported public API endpoints.
+  - `api ls` — list all supported public API endpoints (the full endpoint surface).
 
-### Auth
+### Auth & diagnostics
 
 - `whoami` — show the authenticated Notion user (`args: { json: true }` for raw JSON; `--plain` for TSV).
 - `auth token` — print the current authentication token.
 - `login` — log in to Notion (browser flow, or `args: { "no-browser": true }` for two-step flow).
 - `logout` — log out of Notion.
+- `doctor` — check the health of the Notion CLI setup (use to diagnose auth/install issues).
+- `update` — update `ntn` to the latest version (`args: { force: true }` to force reinstall).
+
+> `notion-as-code` (alpha, not publicly available) and `help` also exist but are not generally useful via this tool. Run `ntn --help` via bash for the authoritative top-level command list.
 
 ## Pitfalls
 

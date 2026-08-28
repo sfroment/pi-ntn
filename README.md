@@ -77,6 +77,22 @@ Search the workspace:
 }
 ```
 
+List file uploads:
+
+```json
+{
+  "subcommand": "files list"
+}
+```
+
+Check the CLI health:
+
+```json
+{
+  "subcommand": "doctor"
+}
+```
+
 ## Development
 
 ```bash

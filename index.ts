@@ -381,15 +381,17 @@ export default function ntnExtension(pi: ExtensionAPI) {
 		name: "ntn",
 		label: "Notion CLI",
 		description:
-			"Call the Notion CLI (ntn) to interact with pages, databases, data sources, and the public Notion API. " +
+			"Call the Notion CLI (ntn) to interact with pages, databases, data sources, file uploads, workers, and the public Notion API. " +
+			"Top-level subcommands: pages, datasources, files, workers (beta), api, auth, whoami, login, logout, doctor, update. " +
 			"All params are top-level siblings: subcommand (e.g. 'pages get <id>'), args (object of flags), data, method. " +
 			"Never nest subcommand/data/method inside args — args is a flat key/value object of flags only.\n" +
+			"Use `api <path>` as the escape hatch for any endpoint without a dedicated subcommand (`api ls` lists all endpoints).\n" +
 			"Example call shape:\n" + NTN_CALL_EXAMPLE_JSON + "\n" +
 			"Destructive operations (pages trash) require `forceDangerous: true`.",
 		promptSnippet:
-			"Interact with Notion (pages, databases, data sources, API) via the ntn CLI.",
+			"Interact with Notion (pages, databases, data sources, files, workers, API) via the ntn CLI.",
 		promptGuidelines: [
-			"Use the `ntn` tool when the user asks about Notion — pages, databases, data sources, or the API. It calls the ntn CLI directly.",
+			"Use the `ntn` tool when the user asks about Notion — pages, databases, data sources, file uploads, workers, or the public API. It calls the ntn CLI directly. Top-level subcommands: pages, datasources, files, workers, api, auth, whoami, login, logout, doctor, update. Run `ntn --help` via bash for the authoritative list and `ntn api ls` for every API endpoint.",
 			"All params are top-level siblings: subcommand, args, data, method, timeoutSeconds, forceDangerous. Never nest one inside another.",
 			"`args` is a key/value object of flags only (e.g. {json: true}), never an array, and never contains subcommand/data/method.",
 			"Use `data` for API request bodies (e.g. data: '{\"query\":\"meeting notes\"}' for search) and `method` for HTTP method override.",
