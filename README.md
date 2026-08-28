@@ -1,0 +1,82 @@
+# pi-ntn
+
+A [pi coding agent](https://github.com/earendil-works/pi-mono) extension that wraps the official Notion `ntn` CLI as a single typed tool — **directly**, not via an MCP server.
+
+## What it provides
+
+- an `ntn` custom tool with typed parameters (`subcommand` + `args` map + `data` + `method` + `timeoutSeconds` + `forceDangerous`)
+- a bundled `SKILL.md` documenting the tool and common `ntn` commands
+- per-turn prompt guidance when a prompt mentions Notion, pages, databases, data sources, or workspaces
+- graceful detection of the "not authenticated" failure with actionable guidance
+- a safety guard that refuses `pages trash` unless `forceDangerous: true` is set
+
+## Why not MCP?
+
+The `ntn` CLI already exposes the full Notion API (pages, databases, data sources, search, raw API) and uses the user's existing `ntn login` credentials. Wrapping it in a typed pi tool gives structured, discoverable parameters and output truncation without an extra server process — and replaces the `notion` MCP server.
+
+## Requirements
+
+- `ntn` CLI on PATH — [notion.so](https://notion.so)
+- Authenticated via `ntn login`
+
+## Installation
+
+Drop the extension into `~/.pi/agent/extensions/` (global) or `.pi/extensions/` (project-local), then reload:
+
+```text
+/reload
+```
+
+Or install from git:
+
+```bash
+pi install git:github.com/sfroment/pi-ntn
+```
+
+## Tool parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `subcommand` | `string` | The full ntn subcommand path (e.g. `"pages get <id>"`, `"api /v1/search"`, `"datasources query <id>"`). Top-level — never nest inside `args`. |
+| `args` | `object` | A key/value object of flags ONLY — **never an array**, and do not nest `subcommand`/`data`/`method` here. Booleans → bare `--flag` (`{json: true}` → `--json`). Strings/numbers → `--flag value` (`{parent: "page:abc"}` → `--parent page:abc`). Arrays → repeated `--flag value` pairs. `false`/`null`/`undefined` are skipped. |
+| `data` | `string` | Request body for `api` calls — a JSON string, `@path`, or `@-` for stdin (translates to `--data`). |
+| `method` | `string` | HTTP method override for `api` calls (translates to `--method`). |
+| `timeoutSeconds` | `integer` | Command timeout (default 30, max 120). |
+| `forceDangerous` | `boolean` | Opt-in for `pages trash` (the delete-class op). Requires explicit user confirmation. |
+
+## Examples
+
+Get a page as Markdown:
+
+```json
+{
+  "subcommand": "pages get <page-id>",
+  "args": { "json": true }
+}
+```
+
+Search the workspace:
+
+```json
+{
+  "subcommand": "api /v1/search",
+  "data": "{\"query\":\"meeting notes\",\"filter\":{\"property\":\"object\",\"value\":\"page\"}}"
+}
+```
+
+## Development
+
+```bash
+bun test          # pretest links pi runtime deps automatically
+bunx tsc --noEmit # type-check
+```
+
+## License
+
+GPL-3.0
+
+## Links
+
+- **Author:** [Sacha Froment](https://sacha42.com)
+- **Source:** <https://github.com/sfroment/pi-ntn>
+- **Issues:** <https://github.com/sfroment/pi-ntn/issues>
