@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"description": "Pi extension wrapping the Notion ntn CLI as a single typed tool (direct CLI, not MCP).",
 	"license": "GPL-3.0",
-	"author": "Sacha Froment <sacha.froment@mistral.ai>",
+	"author": "Sacha Froment (https://sacha42.com)",
 	"homepage": "https://github.com/sfroment/pi-ntn",
 	"repository": {
 		"type": "git",

@@ -12,6 +12,13 @@ import { Type } from "typebox";
 /** Commands that are destructive/unrecoverable — refused unless forceDangerous is set. */
 const DANGEROUS_COMMANDS = ["pages trash"];
 
+/**
+ * Flags the `ntn api` subcommand does NOT accept (it errors with
+ * "unexpected argument"). The request path is positional and output is JSON
+ * by default. Detected and rejected with the working form before exec.
+ */
+const API_UNSUPPORTED_FLAGS = new Set(["path", "json"]);
+
 /** Regex matching ntn's not-authenticated error messages. */
 const NOT_AUTHED = /unauthorized|not authenticated|auth.*fail|token.*invalid|login.*required/i;
 
@@ -193,6 +200,49 @@ export function buildArgv(params: RawNtnParams): string[] {
 }
 
 /**
+ * Reject common mis-uses of the `api` subcommand before they reach the CLI:
+ * the request path is POSITIONAL (there is no `--path` flag) and output is
+ * JSON by default (there is no `--json` flag). Both fail with a bare
+ * "unexpected argument" that gives the model nothing to recover with.
+ */
+export function assertApiFlagUsage(params: NtnParams): void {
+	const words = params.subcommand.trim().toLowerCase().split(/\s+/);
+	if (words[0] !== "api") return;
+
+	// Flag tokens can also be embedded directly in the subcommand string
+	// (e.g. "api /v1/search --json"), which buildArgv splits verbatim into
+	// argv — same malformed-token route as the args keys below.
+	for (const word of words) {
+		const stripped = word.replace(/^-+/, "").split("=")[0];
+		if (API_UNSUPPORTED_FLAGS.has(stripped)) {
+			throw new Error(
+				`\`ntn api\` has no \`--${stripped}\` flag (the CLI rejects it with "unexpected argument"). ` +
+					`The request path is POSITIONAL and the output is JSON by default. ` +
+					`Working form: subcommand: "api /v1/search" with the body in data: '{"query": "..."}' and ` +
+					`the method override in method: "POST".`,
+			);
+		}
+	}
+
+	const args = params.args ?? {};
+	for (const key of Object.keys(args)) {
+		// buildArgv tolerates keys that already carry dashes (and the model may
+		// inline the value, e.g. `{"--path=/v1/search": true}`), so the guard
+		// must normalize both away — otherwise those shapes slip through to
+		// the CLI as malformed `--path` tokens.
+		const bareKey = key.replace(/^-+/, "").split("=")[0].toLowerCase();
+		if (API_UNSUPPORTED_FLAGS.has(bareKey)) {
+			throw new Error(
+				`\`ntn api\` has no \`--${bareKey}\` flag (the CLI rejects it with "unexpected argument"). ` +
+					`The request path is POSITIONAL and the output is JSON by default. ` +
+					`Working form: subcommand: "api /v1/search" with the body in data: '{"query": "..."}' and ` +
+					`the method override in method: "POST".`,
+			);
+		}
+	}
+}
+
+/**
  * Guard against destructive ntn operations that are hard or impossible to
  * reverse. The tool refuses these unless the caller explicitly sets
  * `forceDangerous: true`, which keeps the LLM from trashing a page
@@ -255,6 +305,22 @@ export async function runNtn(
 		throw new Error("Pass an ntn subcommand, for example `subcommand: 'pages get <page-id>'` or `subcommand: 'api /v1/search'`.");
 	}
 	assertSafeCommand(params);
+	// Also catch top-level `path`/`json` keys on api calls: normalizeParams
+	// preserves unknown top-level keys, so a flat mis-call would otherwise reach
+	// the CLI as a bare `ntn api` and fail with a confusing error.
+	const words = params.subcommand.trim().toLowerCase().split(/\s+/);
+	if (words[0] === "api") {
+		const raw = rawParams as Record<string, unknown>;
+		for (const key of ["path", "json"]) {
+			if (raw[key] !== undefined) {
+				throw new Error(
+					`\`ntn api\` takes the request path POSITIONALLY in the subcommand (e.g. subcommand: "api /v1/search") — ` +
+					`there is no \`--${key}\` flag. Pass the body in data: '{"query": "..."}' and the method override in method: "POST".`,
+				);
+			}
+		}
+	}
+	assertApiFlagUsage(params);
 
 	const argv = buildArgv(params);
 	const timeoutSeconds = Math.min(Math.max(params.timeoutSeconds ?? 30, 1), 120);
@@ -357,7 +423,7 @@ ${NTN_CALL_EXAMPLE_JSON}
 Key patterns:
 - Get a page: \`subcommand: "pages get <page-id>"\`.
 - Create a page: \`subcommand: "pages create"\`, \`args: { parent: "page:<id>" }\`, \`data: "# Title\\n\\nBody"\`.
-- Search workspace: \`subcommand: "api /v1/search"\`, \`data: '{"query":"meeting notes"}'\`.
+- Search workspace: \`subcommand: "api /v1/search"\`, \`data: '{"query":"meeting notes"}'\`. The request path is POSITIONAL inside the subcommand — \`api\` has no \`--path\` and no \`--json\` flag; output is JSON by default.
 - Query a database: \`subcommand: "datasources query <data-source-id>"\`.
 - Destructive ops (\`pages trash\`) require \`forceDangerous: true\` and explicit user confirmation.
 

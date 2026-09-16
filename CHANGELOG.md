@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `ntn api` misuse guard: `path`/`json` args (including `--`-prefixed keys and flat top-level keys) on `api` calls are refused with the working form — the request path is positional and output is JSON by default.
+
+### Changed
+- Skill and guidance now document the positional `api` request path explicitly.
+- Removed environment-specific references from docs and packaging (author email domain).
+- Made `scripts/link-pi-deps.sh` portable (PI_RUNTIME_DIR override + `npm root -g`, no hardcoded paths).
+- Regenerated `bun.lock` against the public npm registry (format v2, no registry URLs); CI and release workflows bumped to bun 1.4 for the new lockfile format.
+
 ## [1.0.0] - 2026-08-28
 
 ### Added

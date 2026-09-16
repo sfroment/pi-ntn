@@ -17,7 +17,7 @@ The `ntn` tool takes:
 
 - `subcommand` (required, string) — the full ntn CLI command path (e.g. `"pages get <id>"`, `"api /v1/search"`, `"datasources query <id>"`). Top-level parameter — never nest it inside `args`.
 - `args` (optional object) — a key/value object of flags ONLY (never an array; do not nest `subcommand`, `data`, or `method` here). Booleans become bare `--flag` (`{json: true}` → `--json`). Strings/numbers become `--flag value` tokens (`{parent: "page:abc123"}` → `--parent page:abc123`). Arrays become repeated `--flag value` pairs. `false`/`null`/`undefined` are skipped.
-- `data` (optional string) — request body for `api` calls (translates to `--data <JSON|@path|@->). Pass a JSON string for search queries and mutations.
+- `data` (optional string) — request body for `api` calls (translates to `--data <JSON|@path|@->`). Pass a JSON string for search queries and mutations.
 - `method` (optional string) — HTTP method override for `api` calls (translates to `--method <METHOD>`).
 - `timeoutSeconds` (optional, default 30, max 120) — command timeout.
 - `forceDangerous` (optional boolean) — opt-in for destructive commands (`pages trash`). Requires explicit user confirmation.
@@ -72,7 +72,7 @@ This produces `ntn api /v1/search --data '{"query":"meeting notes","filter":{"pr
 
 ### Raw API
 
-- `api <path>` — raw Notion API call. Pass the request body via `data` and optionally override the HTTP method via `method`. This is the escape hatch for any endpoint not covered by a dedicated subcommand.
+- `api <path>` — raw Notion API call. Pass the request body via `data` and optionally override the HTTP method via `method`. This is the escape hatch for any endpoint not covered by a dedicated subcommand. **The path is POSITIONAL — there is NO `--path` flag and NO `--json` flag** (the CLI rejects both with "unexpected argument"); output is JSON by default. The tool also rejects `path`/`json` args on `api` calls with the working form.
   - `api /v1/search` — search by title (`data: '{"query":"...","filter":{"property":"object","value":"page"}}'`).
   - `api /v1/pages` — create a page (POST; pass body via `data`).
   - `api /v1/pages/<id>` — retrieve or update a page (GET/PATCH).
@@ -100,6 +100,7 @@ This produces `ntn api /v1/search --data '{"query":"meeting notes","filter":{"pr
 - **ntn not installed** — if the tool reports `ntn` is not on PATH, tell the user to install the Notion CLI and ensure it's on PATH.
 - **`--data` is the request body for `api` calls** — use it for search queries and mutations. Pass a JSON string, `@path` to read from a file, or `@-` to read from stdin.
 - **No top-level `search`** — workspace search is `api /v1/search` with a `data` body containing `query` and optionally `filter`.
+- **`api` flags**: the request path is positional in the subcommand (`"api /v1/search"`), not a flag. Never pass `path` or `json` in `args` for `api` calls — the tool refuses them; the CLI would error "unexpected argument".
 - **`subcommand` is split on whitespace** — `"pages get abc-123"` becomes `["pages", "get", "abc-123"]`. Do not quote subcommands.
 - **Large output is truncated** — the tool caps output at 2000 lines / 50KB. Use `args: { json: true }` for structured output when you need to parse results.
 

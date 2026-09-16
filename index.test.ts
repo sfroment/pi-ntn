@@ -1,4 +1,4 @@
-import { assertSafeCommand, buildArgv, formatOutput, runNtn, NTN_GUIDANCE, NTN_CALL_EXAMPLE, NTN_ARGS_DESCRIPTION, NTN_SUBCOMMAND_DESCRIPTION, type ExecResult, type NtnExec, type NtnParams } from "./index.ts";
+import { assertApiFlagUsage, assertSafeCommand, buildArgv, formatOutput, runNtn, NTN_GUIDANCE, NTN_CALL_EXAMPLE, NTN_ARGS_DESCRIPTION, NTN_SUBCOMMAND_DESCRIPTION, type ExecResult, type NtnExec, type NtnParams } from "./index.ts";
 import { describe, expect, mock, test } from "bun:test";
 
 describe("buildArgv", () => {
@@ -150,6 +150,80 @@ describe("buildArgv mode#2 (nested args)", () => {
 		expect(
 			buildArgv({ args: { subcommand: "api /v1/search", data: 42, verbose: true } }),
 		).toEqual(["api", "/v1/search", "--data", "42", "--verbose"]);
+	});
+});
+
+describe("assertApiFlagUsage", () => {
+	test("api with --path-style arg is refused with the working form", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { path: "/v1/search" } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("api with json arg is refused with the working form", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { json: true } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("api with valid flags (data/method are top-level) passes", () => {
+		expect(() =>
+			assertApiFlagUsage({
+				subcommand: "api /v1/search",
+				data: '{"query":"x"}',
+				method: "POST",
+			}),
+		).not.toThrow();
+	});
+
+	test("non-api subcommands are not checked", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "pages get <id>", args: { json: true } }),
+		).not.toThrow();
+	});
+
+	test("api with double-dash key is also refused", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { "--path": "/v1/search" } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("api with single-dash key is also refused (malformed-token route)", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { "-json": true } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("api with flag token embedded in the subcommand string is refused", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search --json" }),
+		).toThrow(/POSITIONAL/);
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search --path=/v1/search" }),
+		).toThrow(/POSITIONAL/);
+		// a normal api call with data/method untouched
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", data: "{}", method: "POST" }),
+		).not.toThrow();
+	});
+
+	test("api with inline-value key ('--path=/v1/search') is refused", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { "--path=/v1/search": true } }),
+		).toThrow(/POSITIONAL/);
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "api /v1/search", args: { "json=true": true } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("uppercase subcommand is still detected", () => {
+		expect(() =>
+			assertApiFlagUsage({ subcommand: "API /v1/search", args: { json: true } }),
+		).toThrow(/POSITIONAL/);
+	});
+
+	test("api ls with no args passes (nothing to reject)", () => {
+		expect(() => assertApiFlagUsage({ subcommand: "api ls" })).not.toThrow();
 	});
 });
 
@@ -438,6 +512,46 @@ describe("runNtn tolerance", () => {
 		await expect(
 			runNtn({ args: { subcommand: "pages trash" } }, exec),
 		).rejects.toThrow(/pages trash/);
+		expect(exec.calls).toHaveLength(0);
+	});
+
+	test("A3.5 top-level path key on an api call is refused before exec", async () => {
+		const exec = makeFakeExec({ stdout: "", code: 0 });
+		await expect(
+			runNtn({ subcommand: "api /v1/search", path: "/v1/search" } as never, exec),
+		).rejects.toThrow(/POSITIONALLY/);
+		expect(exec.calls).toHaveLength(0);
+	});
+
+	test("A3.6 array-args --path token on an api call is refused after normalization", async () => {
+		const exec = makeFakeExec({ stdout: "", code: 0 });
+		await expect(
+			runNtn({ subcommand: "api", args: ["/v1/search", "--path", "x"] }, exec),
+		).rejects.toThrow(/POSITIONAL/);
+		expect(exec.calls).toHaveLength(0);
+	});
+
+	test("A3.7 top-level json key on an api call is refused before exec", async () => {
+		const exec = makeFakeExec({ stdout: "", code: 0 });
+		await expect(
+			runNtn({ subcommand: "api /v1/search", json: true } as never, exec),
+		).rejects.toThrow(/POSITIONALLY/);
+		expect(exec.calls).toHaveLength(0);
+	});
+
+	test("A3.8 double-dash --json arg key through runNtn is refused before exec", async () => {
+		const exec = makeFakeExec({ stdout: "", code: 0 });
+		await expect(
+			runNtn({ subcommand: "api /v1/search", args: { "--json": true } }, exec),
+		).rejects.toThrow(/POSITIONAL/);
+		expect(exec.calls).toHaveLength(0);
+	});
+
+	test("A3.4 api with a path arg nested in args is refused before exec", async () => {
+		const exec = makeFakeExec({ stdout: "", code: 0 });
+		await expect(
+			runNtn({ args: { subcommand: "api /v1/search", path: "/v1/search" } }, exec),
+		).rejects.toThrow(/POSITIONAL/);
 		expect(exec.calls).toHaveLength(0);
 	});
 });
