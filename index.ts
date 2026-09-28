@@ -465,11 +465,9 @@ export default function ntnExtension(pi: ExtensionAPI) {
 			"If the tool reports you are not authenticated, tell the user to run `ntn login`.",
 		],
 		parameters: Type.Object({
-			subcommand: Type.Optional(
-				Type.String({
-					description: NTN_SUBCOMMAND_DESCRIPTION,
-				}),
-			),
+			subcommand: Type.String({
+				description: NTN_SUBCOMMAND_DESCRIPTION,
+			}),
 			args: Type.Optional(
 				Type.Union([
 					Type.Record(
